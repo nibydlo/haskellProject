@@ -37,7 +37,6 @@ import Data.Pool( Pool
 import qualified Data.Text.Lazy as TL (Text(..))
 import qualified Data.Text.Lazy.Encoding as TL (decodeUtf8)
 import qualified Data.ByteString.Lazy.Char8 as BL (pack)
---import qualified Data.Text as T
 import GHC.Int (Int64(..))
 
 data DbConfig = DbConfig {

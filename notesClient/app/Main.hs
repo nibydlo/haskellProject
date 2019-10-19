@@ -54,8 +54,6 @@ import GI.Gtk (
               , widgetSetMarginBottom
               , widgetSetMarginTop
               , widgetSetSizeRequest
-        --       , widgetOverrideBackgroundColor
-        --       , widgetOverrideColor
               , windowNew
               , Orientation (OrientationVertical)
               , AttrOp( (:=) )
@@ -73,54 +71,41 @@ import GI.Gtk.Objects.Button (setButtonLabel)
 import GI.Gtk.Objects.Adjustment (noAdjustment)
 import GI.Gtk.Objects.Alignment (alignmentNew)
 import GI.Gtk.Enums (WindowType(..), PolicyType(..),Align(..),SelectionMode(..))
-import Utils (cutTitle, getMaxId, numBytesUtf8, toLazy)
+import Utils ( cutTitle
+             , getTextView
+             , getTextViewText
+             , getMaxId
+             , lazyLenUtf8
+             , numBytesUtf8
+             , textViewGetValue
+             , toLazy)
 
-textViewGetValue :: TextView -> IO Text
-textViewGetValue tv = do
-  buf <- textViewGetBuffer tv
-  start <- textBufferGetStartIter buf
-  end <- textBufferGetEndIter buf
-  value <- textBufferGetText buf start end True
-  return value
-
-getTVText :: Widget -> IO Text
-getTVText w = do
-  maybeTv <- castTo TextView w
-  case maybeTv of
-    Nothing -> return ""
-    Just tv -> textViewGetValue tv
-
-getTV :: Widget -> IO TextView
-getTV w = do
-  maybeTv <- castTo TextView w
-  case maybeTv of
-    Nothing -> do
-      newTV <- textViewNew
-      return newTV
-    Just tv -> return tv
-
-openNote :: String -> FlowBox -> Label -> Entry -> TextView -> IO ()
-openNote noteIdString fb stateLabel entry textView = do
-  let noteId = read noteIdString :: Integer
-  note <- getNote noteId
-  labelSetText stateLabel $ pack noteIdString -- update currently open note id
-  entrySetText entry (Lazy.toStrict $ title note) -- update title of note
-  widgetShowAll entry -- show new title
-  oldTextBuffer <- getTextViewBuffer textView --
-  print (Lazy.toStrict $ Domain.text note)
-  textBufferSetText oldTextBuffer (Lazy.toStrict $ Domain.text note) ((fromIntegral ((numBytesUtf8 $ unpack $ Lazy.toStrict $ Domain.text note) :: Int) :: Int32))
-  textViewSetBuffer textView (Just oldTextBuffer) -- update text of note
-  widgetShowAll textView -- show new text
+showNote :: Label -> Entry -> TextView -> Note -> IO ()
+showNote stateLabel titleEntry textView note = do
+  labelSetText stateLabel $ pack (show $ Domain.id note)
+  entrySetText titleEntry (Lazy.toStrict $ title note)
+  textBuffer <- getTextViewBuffer textView
+  textBufferSetText textBuffer (Lazy.toStrict $ text note) (lazyLenUtf8 $ text note)
+  textViewSetBuffer textView (Just textBuffer)
+  widgetShowAll titleEntry
+  widgetShowAll textView
   return ()
 
-createNoteButton :: Note -> FlowBox -> Label -> Entry -> TextView  -> IO Box
-createNoteButton note fb stateLabel entry textView = do
+openNote :: String -> Label -> Entry -> TextView -> IO ()
+openNote noteIdString stateLabel entry textView = do
+  let noteId = read noteIdString :: Integer
+  note <- getNote noteId
+  showNote stateLabel entry textView note
+  return ()
+
+createNoteButton :: Note -> Label -> Entry -> TextView  -> IO Box
+createNoteButton note stateLabel entry textView = do
   noteButton <- new Button [#label := (cutTitle $ Lazy.toStrict $ title note)]
   widgetSetSizeRequest noteButton 150 40
   noteBox <- new Box [#expand := False]
   #add noteBox noteButton
   widgetSetMarginTop noteBox 10
-  on noteButton #clicked (openNote (show $ Domain.id note) fb stateLabel entry textView)
+  on noteButton #clicked (openNote (show $ Domain.id note) stateLabel entry textView)
   return noteBox
 
 createFlowbox :: FlowBox -> Label -> Entry -> TextView -> IO ()
@@ -128,7 +113,7 @@ createFlowbox fb stateLabel entry textView = do
   children <- containerGetChildren fb
   mapM_ (containerRemove fb) children
   notes <- getNotes
-  mapM_ (\note -> (createNoteButton note fb stateLabel entry textView >>= (\b -> containerAdd fb b)) ) notes
+  mapM_ (\note -> (createNoteButton note stateLabel entry textView >>= (\b -> containerAdd fb b)) ) notes
   widgetShowAll fb
 
 changeTV :: ScrolledWindow -> IO ()
@@ -142,6 +127,7 @@ createNote titleEntry noteTextScrolled stateLabel listFlowBox = do
   changeTV noteTextScrolled
   textView <- textViewNew
   containerAdd noteTextScrolled textView
+  widgetShowAll titleEntry
   widgetShowAll noteTextScrolled
   notes <- getNotes
   let newId = 1 + (getMaxId notes)
@@ -156,11 +142,11 @@ saveNote titleEntry noteTextScrolled stateLabel listFlowBox tv = do
   children <- containerGetChildren noteTextScrolled
   let textView = Prelude.head children
   noteTitle <- entryGetText titleEntry
-  noteText <- getTVText textView
+  noteText <- getTextViewText textView
   noteIdText <- labelGetText stateLabel
   let noteId = read (unpack noteIdText) :: Integer
   putNote (Note noteId (toLazy noteTitle) (toLazy noteText))
-  actualTV <- getTV textView
+  actualTV <- getTextView textView
   createFlowbox listFlowBox stateLabel titleEntry actualTV
 
 deleteNote :: FlowBox -> Label -> Entry -> ScrolledWindow -> IO ()
@@ -268,6 +254,15 @@ mainWindow = do
   #add editNoteBox saveDeleteBox
 
   createFlowbox listFlowBox stateLabel titleEntry textView
+
+  notes <- getNotes
+  let lastId = getMaxId notes
+  lastNote <- getNote lastId
+  let noteToShow = if lastId == (-1)
+                   then (Note (-1) "there is no notes, let's create one!" "")
+                   else lastNote
+  showNote stateLabel titleEntry textView noteToShow
+
   on updateButton #clicked (createFlowbox listFlowBox stateLabel titleEntry textView)
   on createButton #clicked (createNote titleEntry noteTextScrolled stateLabel listFlowBox)
   on saveButton #clicked (saveNote titleEntry noteTextScrolled stateLabel listFlowBox textView)

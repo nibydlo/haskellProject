@@ -42,6 +42,8 @@ library
     , lens
     , bytestring
     , utf8-string
+    , gi-gtk
+    , lens-aeson
   default-language: Haskell2010
 
 executable notesClient-exe

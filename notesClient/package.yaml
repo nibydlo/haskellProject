@@ -1,0 +1,53 @@
+name:                notesClient
+version:             0.1.0.0
+github:              "githubuser/notesClient"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
+extra-deps:
+- gtk-0.13.9
+- cairo-0.13.6.0@sha256:a9122d48957a2dbb5a177e5068b850efa1e99bb22c68eb2571165c3c945a8dd6,4187
+- gio-0.13.6.0@sha256:00fce1b49c902ba82433cc018fb5d4651797464342a9cbc66df2c62bb8884650,3102
+- glib-0.13.7.0@sha256:25f62eb48d104342537dd1c724f07355d56226ca595ce6f1848415fbb7f59fa7,3120
+- pango-0.13.6.0@sha256:ed8d300945bea97ccb652efc73d159634aefebff8c64f60eef6b6ac5ecebc4ae,3881
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/notesClient#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+executables:
+  notesClient-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - notesClient
+
+tests:
+  notesClient-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - notesClient
